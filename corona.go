@@ -11,8 +11,8 @@ import (
 
 func parseResponse(response string) {
 	var countryResult string
-	country := strings.Title(os.Args[1])
-	fmt.Println(`👾👾👾 COVID-19 in`, country, `👾👾👾`)
+	country := os.Args[1]
+	fmt.Println(`👾👾👾 COVID-19 in`, strings.ToUpper(country), `👾👾👾`)
 	fmt.Println(`-------------------------------`)
 
 	headers := [8]string{
@@ -25,7 +25,9 @@ func parseResponse(response string) {
 		"🥵 Critical",
 		"🗠  Cases / 1M Population",
 	}
-	tableRowRe := regexp.MustCompile(`(?U)<tr style=""> <td style=".*?"> (?:<a .*>)?` + country + `(?:</a>)? </td> (.*) </tr>`)
+
+	countryGroup := "(?:" + strings.Title(country) + "|" + strings.ToUpper(country) + ")"
+	tableRowRe := regexp.MustCompile(`(?U)<tr style=""> <td style=".*?"> (?:<a .*>)?` + countryGroup + `(?:</a>)? </td> (.*) </tr>`)
 
 	countryMatches := tableRowRe.FindStringSubmatch(response)
 
@@ -47,7 +49,7 @@ func parseResponse(response string) {
 
 	}
 
-	fmt.Printf("Ooops.. Looks like %s does not exist anymore!\n", country)
+	fmt.Printf("Ooops.. Looks like %s does not exist anymore!\n", strings.ToUpper(country))
 }
 
 func makeRequest() (string, error) {
