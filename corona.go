@@ -15,16 +15,15 @@ func parseResponse(response string) {
 	fmt.Println(`👾👾👾 COVID-19 in`, country, `👾👾👾`)
 	fmt.Println(`-------------------------------`)
 
-	headers := [9]string{
+	headers := [8]string{
 		"📋 Total cases",
-		"_",
 		"🆕 New cases",
 		"💀 Total death",
 		"⚰️  New death",
-		"_",
-		"_",
-		"_",
-		"🤒 Critical",
+		"💪 Total recovered",
+		"🤒 Active cases",
+		"🥵 Critical",
+		"🗠  Cases / 1M Population",
 	}
 	tableRowRe := regexp.MustCompile(`(?U)<tr style=""> <td style=".*?"> (?:<a .*>)?` + country + `(?:</a>)? </td> (.*) </tr>`)
 
