@@ -33,6 +33,10 @@ func parseResponse(response string) {
 
 	if len(countryMatches) > 0 {
 		countryResult = countryMatches[1]
+
+		commentedRe := regexp.MustCompile(`(?U)<!--\s?<td style=".*">.*</td>\s?-->`)
+		countryResult = commentedRe.ReplaceAllString(countryResult, "")
+
 		valuesRe := regexp.MustCompile(`(?U)<td style=".*">(.*)</td>`)
 		valuesMatches := valuesRe.FindAllStringSubmatch(countryResult, -1)
 
