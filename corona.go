@@ -23,13 +23,22 @@ func parseResponse(response string) {
 		"💪 Total recovered",
 		"🤒 Active cases",
 		"🥵 Critical",
-		"🗠  Cases / 1M Population",
+		"🧮 Cases / 1M Population",
 	}
 
-	countryGroup := "(?:" + strings.Title(country) + "|" + strings.ToUpper(country) + ")"
-	tableRowRe := regexp.MustCompile(`(?U)<tr style=""> <td style=".*?"> (?:<a .*>)?` + countryGroup + `(?:</a>)? </td> (.*) </tr>`)
+	newLineRe := regexp.MustCompile(`\r?\n`)
+	response = newLineRe.ReplaceAllString(response, "")
 
-	countryMatches := tableRowRe.FindStringSubmatch(response)
+	tableRe := regexp.MustCompile("<table id=\"main_table_countries_today\" .*>(.*)</table>")
+	tableMatches := tableRe.FindStringSubmatch(response)
+
+	whiteSpaceRe := regexp.MustCompile(`>(\s*)<`)
+	tableData := whiteSpaceRe.ReplaceAllString(tableMatches[0], "><")
+
+	countryGroup := "(?:" + strings.Title(country) + "|" + strings.ToUpper(country) + ")"
+	tableRowRe := regexp.MustCompile(`(?U)<tr .*>\s*<td .*>\s*(?:<a .*>)?\s*` + countryGroup + `\s*(?:</a>)?\s*</td>(.*)</tr>`)
+
+	countryMatches := tableRowRe.FindStringSubmatch(tableData)
 
 	if len(countryMatches) > 0 {
 		countryResult = countryMatches[1]
