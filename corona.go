@@ -1,19 +1,18 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
+	"time"
 )
 
-func parseResponse(response string) {
+func parseResponse(response string, daysAgo int) {
 	var countryResult string
-	country := os.Args[1]
-	fmt.Println(`👾👾👾 COVID-19 in`, strings.ToUpper(country), `👾👾👾`)
-	fmt.Println(`-------------------------------`)
+	country := flag.Args()[0]
 
 	headers := [8]string{
 		"📋 Total cases",
@@ -29,7 +28,24 @@ func parseResponse(response string) {
 	newLineRe := regexp.MustCompile(`\r?\n`)
 	response = newLineRe.ReplaceAllString(response, "")
 
-	tableRe := regexp.MustCompile("<table id=\"main_table_countries_today\" .*>(.*)</table>")
+	var tableID string
+	if daysAgo == 0 {
+		tableID = "main_table_countries_today"
+	} else if daysAgo == 1 {
+		tableID = "main_table_countries_yesterday"
+	} else if daysAgo == 2 {
+		tableID = "main_table_countries_yesterday2"
+	} else {
+		fmt.Println("Only last 2 days available. Please specify -d parameter in range 0-2")
+		return
+	}
+
+	currentTime := time.Now().AddDate(0, 0, -1*daysAgo)
+	fmt.Println(`👾👾👾 `, strings.ToUpper(country), currentTime.Format("02-Jan-2006"), `👾👾👾`)
+	fmt.Println(`-------------------------------`)
+
+	tableSelector := fmt.Sprintf("<table id=\"%s\" .*>(.*)</table>", tableID)
+	tableRe := regexp.MustCompile(tableSelector)
 	tableMatches := tableRe.FindStringSubmatch(response)
 
 	whiteSpaceRe := regexp.MustCompile(`>(\s*)<`)
@@ -78,7 +94,10 @@ func makeRequest() (string, error) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	daysAgo := flag.Int("d", 0, "Days ago. Default 0, e.g. today (0-2)")
+	flag.Parse()
+
+	if len(flag.Args()) < 1 {
 		fmt.Println("👾 Please, specify a country")
 		return
 	}
@@ -86,6 +105,6 @@ func main() {
 	if response, err := makeRequest(); err != nil {
 		fmt.Println("👾 COVID-2019 Error. Please, try again later 👾")
 	} else {
-		parseResponse(response)
+		parseResponse(response, *daysAgo)
 	}
 }
