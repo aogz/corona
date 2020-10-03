@@ -10,43 +10,91 @@ import (
 	"time"
 )
 
+// DailyData represents statistics by date
+type DailyData struct {
+	totalCases      string
+	newCases        string
+	totalDeaths     string
+	newDeaths       string
+	totalRecovered  string
+	activeCases     string
+	criticalCases   string
+	casesPerMillion string
+}
+
 func parseResponse(response string, daysAgo int) {
-	var countryResult string
 	country := flag.Args()[0]
 
 	headers := [8]string{
-		"📋 Total cases",
 		"🆕 New cases",
+		"📋 Total cases",
 		"💀 Total death",
-		"⚰️  New death",
-		"💪 Total recovered",
+		"😵 New death",
+		"💪 Recovered",
 		"🤒 Active cases",
 		"🥵 Critical",
-		"🧮 Cases / 1M Population",
+		"🧮 Cases / 1M",
 	}
 
 	newLineRe := regexp.MustCompile(`\r?\n`)
 	response = newLineRe.ReplaceAllString(response, "")
 
-	var tableID string
-	if daysAgo == 0 {
-		tableID = "main_table_countries_today"
-	} else if daysAgo == 1 {
-		tableID = "main_table_countries_yesterday"
-	} else if daysAgo == 2 {
-		tableID = "main_table_countries_yesterday2"
-	} else {
-		fmt.Println("Only last 2 days available. Please specify -d parameter in range 0-2")
-		return
+	tableIDs := []string{
+		"main_table_countries_yesterday2",
+		"main_table_countries_yesterday",
+		"main_table_countries_today",
 	}
 
-	currentTime := time.Now().AddDate(0, 0, -1*daysAgo)
-	fmt.Println(`👾👾👾 `, strings.ToUpper(country), currentTime.Format("02-Jan-2006"), `👾👾👾`)
-	fmt.Println(`-------------------------------`)
+	dateFormat := "02 Jan"
+	now := time.Now()
+	today := now.Format(dateFormat)
+	yesterday := now.AddDate(0, 0, -1).Format(dateFormat)
+	yesterday2 := now.AddDate(0, 0, -2).Format(dateFormat)
+	result := ""
+	result += fmt.Sprintf("|%-25s|%10s|%10s|%10s|\n", "📅", yesterday2, yesterday, today)
+	for headerIndex, header := range headers {
+		rowArgs := []interface{}{
+			header,
+		}
+		for _, tableID := range tableIDs {
+			data, err := getTabledata(response, tableID, country)
+			if err != nil {
+				rowArgs = append(rowArgs, "N/A")
+			} else {
+				rowArgs = append(rowArgs, getStructValueByIndex(data, headerIndex))
+			}
+		}
+		result += fmt.Sprintf("|%-25s|%10s|%10s|%10s|\n", rowArgs...)
+	}
+	fmt.Print(result)
+}
 
+func getStructValueByIndex(data DailyData, index int) string {
+	if index == 0 {
+		return data.newCases
+	} else if index == 1 {
+		return data.totalCases
+	} else if index == 2 {
+		return data.totalDeaths
+	} else if index == 3 {
+		return data.newDeaths
+	} else if index == 4 {
+		return data.totalRecovered
+	} else if index == 5 {
+		return data.activeCases
+	} else if index == 6 {
+		return data.criticalCases
+	} else if index == 7 {
+		return data.casesPerMillion
+	} else {
+		return "N/A"
+	}
+}
+
+func getTabledata(content string, tableID string, country string) (DailyData, error) {
 	tableSelector := fmt.Sprintf("<table id=\"%s\" .*>(.*)</table>", tableID)
 	tableRe := regexp.MustCompile(tableSelector)
-	tableMatches := tableRe.FindStringSubmatch(response)
+	tableMatches := tableRe.FindStringSubmatch(content)
 
 	whiteSpaceRe := regexp.MustCompile(`>(\s*)<`)
 	tableData := whiteSpaceRe.ReplaceAllString(tableMatches[0], "><")
@@ -57,7 +105,7 @@ func parseResponse(response string, daysAgo int) {
 	countryMatches := tableRowRe.FindStringSubmatch(tableData)
 
 	if len(countryMatches) > 0 {
-		countryResult = countryMatches[1]
+		countryResult := countryMatches[1]
 
 		commentedRe := regexp.MustCompile(`(?U)<!--\s?<td style=".*">.*</td>\s?-->`)
 		countryResult = commentedRe.ReplaceAllString(countryResult, "")
@@ -66,19 +114,31 @@ func parseResponse(response string, daysAgo int) {
 		valuesMatches := valuesRe.FindAllStringSubmatch(countryResult, -1)
 
 		if len(valuesMatches) > 0 {
-			for i, header := range headers {
-				if header != "_" {
-					value := valuesMatches[i][1]
-					fmt.Printf("%s: %s\n", header, value)
-				}
-			}
-
-			return
+			return parseDailyData(valuesMatches), nil
 		}
 
 	}
+	return DailyData{}, fmt.Errorf("Data not parsed")
+}
 
-	fmt.Printf("Ooops.. Looks like %s does not exist anymore!\n", strings.ToUpper(country))
+func parseDailyData(matches [][]string) DailyData {
+	params := []string{}
+	for i, header := range matches {
+		if header[1] != "_" {
+			params = append(params, matches[i][1])
+		}
+	}
+
+	return DailyData{
+		params[0],
+		params[1],
+		params[2],
+		params[3],
+		params[4],
+		params[5],
+		params[6],
+		params[7],
+	}
 }
 
 func makeRequest() (string, error) {
