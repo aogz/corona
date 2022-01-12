@@ -110,7 +110,7 @@ func getTabledata(content string, tableID string, country string) (DailyData, er
 		commentedRe := regexp.MustCompile(`(?U)<!--\s?<td style=".*">.*</td>\s?-->`)
 		countryResult = commentedRe.ReplaceAllString(countryResult, "")
 
-		valuesRe := regexp.MustCompile(`(?U)<td style=".*">(.*)</td>`)
+		valuesRe := regexp.MustCompile(`(?U)<td style=".*">(?:<.*>)?([^<>].*)(?:</.*>)?</td>`)
 		valuesMatches := valuesRe.FindAllStringSubmatch(countryResult, -1)
 
 		if len(valuesMatches) > 0 {
@@ -118,26 +118,26 @@ func getTabledata(content string, tableID string, country string) (DailyData, er
 		}
 
 	}
-	return DailyData{}, fmt.Errorf("Data not parsed")
+	return DailyData{}, fmt.Errorf("data not parsed")
 }
 
 func parseDailyData(matches [][]string) DailyData {
 	params := []string{}
 	for i, header := range matches {
 		if header[1] != "_" {
-			params = append(params, matches[i][1])
+			params = append(params, strings.Trim(matches[i][1], " "))
 		}
 	}
 
 	return DailyData{
-		params[0],
-		params[1],
-		params[2],
-		params[3],
-		params[4],
-		params[5],
-		params[6],
-		params[7],
+		totalCases:      params[0],
+		newCases:        params[1],
+		totalDeaths:     params[2],
+		newDeaths:       params[3],
+		totalRecovered:  params[4],
+		activeCases:     params[5],
+		criticalCases:   params[6],
+		casesPerMillion: params[7],
 	}
 }
 
@@ -146,7 +146,7 @@ func makeRequest() (string, error) {
 	var err error
 
 	if resp, err := http.Get("https://www.worldometers.info/coronavirus/"); err == nil {
-		body, err = ioutil.ReadAll(resp.Body)
+		body, _ = ioutil.ReadAll(resp.Body)
 		defer resp.Body.Close()
 	}
 
