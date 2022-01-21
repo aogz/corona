@@ -110,10 +110,25 @@ func getTabledata(content string, tableID string, country string) (DailyData, er
 		commentedRe := regexp.MustCompile(`(?U)<!--\s?<td style=".*">.*</td>\s?-->`)
 		countryResult = commentedRe.ReplaceAllString(countryResult, "")
 
-		valuesRe := regexp.MustCompile(`(?U)<td style=".*">(?:<.*>)?([^<>].*)(?:</.*>)?</td>`)
+		valuesRe := regexp.MustCompile(`(?U)<td style=".*">(.*)</td>`)
 		valuesMatches := valuesRe.FindAllStringSubmatch(countryResult, -1)
 
 		if len(valuesMatches) > 0 {
+			for i, match := range valuesMatches {
+				innerText := match[1]
+				innerTextRe := regexp.MustCompile(`(?U)(?:<.*>)([^<>].*)(?:</.*>)`)
+				innerTextMatch := innerTextRe.FindStringSubmatch(match[1])
+				if len(innerTextMatch) > 0 {
+					innerText = innerTextMatch[1]
+				}
+
+				innerText = strings.Trim(innerText, " ")
+				if len(innerText) == 0 {
+					innerText = "N/A"
+				}
+				valuesMatches[i] = []string{match[0], innerText}
+			}
+
 			return parseDailyData(valuesMatches), nil
 		}
 
